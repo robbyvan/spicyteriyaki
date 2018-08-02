@@ -1,8 +1,6 @@
-// import myNew from './new';
-
-// import instanceOf from './instanceOf';
-
-// import debounce from './debounce';
-
-// import call from './call.js';
-
+// import './class';
+// import './new';
+// import './instanceOf';
+// import './debounce';
+// import './call.js';
+// import './data-binding';
