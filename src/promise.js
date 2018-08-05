@@ -1,192 +1,130 @@
-// 场景: 
-// 1.http.get用户id <=> { promise包裹的[ resolve, reject包裹的 (异步动作fn) ] }
-// fn完成 => 结果出现到then? 定义的fn的异步调用resolve
-// 2.然后用用户id do sth. => 本来在回调里的部分写到then中: 处理异步结果函数(cb)
+const PENDING = 0;
+const FULFILLED = 1;
+const REJECTED = 2;
 
 function Promise(fn) {
-  var value = null,
-      cbs = [];
+  let state = PENDING;
+  let value = null;
+  let handlers = [];
 
-  this.then = function(onFulfilled) {
-    cbs.push(onFulfilled);
-    return this; // 支持链式调用then
+  // 状态: fulfill
+  function fulfill(result) {
+    state = FULFILLED;
+    value = result;
+    handlers.forEach(handle); // 保存callback
+    handlers = null;
   }
 
-  function resolve(value) {
-    // 利用setTimeout, 防止在then注册完之前, 同步函数的resolve已经执行了
-    setTimeout(function() {
-
-      cbs.forEach(function(cb) {
-        cb(value);
-
-      });
-    }, 0)
-  }
-  // 引入promise, 写成fn(resolve)结构.
-  // fn是异步的, fn自己的异步回调里面使用传入的resolve.
-  fn(resolve);
-}
-
-// 问题: Promise异步函数, 异步成功之前注册的cb会执行, 但是之后cb的不会再执行了 => 引入Promise States解决
-
-function Promise(fn) {
-  var state = 'pending', // 加入state
-      value = null,
-      cbs = [];
-
-  this.then = function(onFulfilled) {
-    // 引入状态判断
-    if (state === 'pending') {
-      cbs.push(onFulfilled);
-      return this; // 支持链式调用  
-    }
-    // 如果异步resolve了, 之后的回调都是利用newValue立即执行
-    onFulfilled(value);
-    return this;
+  // 状态: reject;
+  function reject(error) {
+    state = REJECTED;
+    value = error;
+    handlers.forEach(handle);
+    handlers = null;
   }
 
-  function resolve(newValue) {
-    // 引入value, state保存状态
-    value = newValue;
-    state = 'fulfilled';
-
-    // 利用setTimeout, 防止在then注册完之前, 同步函数的resolve已经执行了
-    setTimeout(function() {
-
-      cbs.forEach(function(cb) {
-        cb(value);
-
-      });
-    }, 0)
-  }
-  // 引入promise, 写成fn(resolve)结构.
-  // fn是异步的, fn自己的异步回调里面使用传入的resolve.
-  fn(resolve);
-}
-
-
-// then里面注册链式调用promise ? => 在then中return一个promise.
-
-function Promise(fn) {
-  var state = 'pending', // 加入state
-      value = null,
-      cbs = [];
-
-  this.then = function(onFulfilled) {
-    return new Promise(function(resolve) {
-      handle({
-        onFulfilled: onFulfilled || null,
-        resolve: resolve
-      });
-    });
-
-    function handle(callback) {
-      if (state === 'pending') {
-        cbs.push(callback);
-        return;
-      }
-      if (!callback.onFulfilled) {
-        callback.resolve(value);
-        return;
-      }
-      var ret = callback.onFulfilled(value);
-      callback.resolve(ret);
-    }
-  }
-
-  function resolve(newValue) {
-
-    if (newValue && (typeof newValue === 'object' || typeof newValue === 'function')) {
-      var then = newValue.then;
-      if (typeof then === 'function') {
-        then.call(newValue, resolve);
-        return;
-      }
-    }
-
-    // 引入value, state保存状态
-    value = newValue;
-    state = 'fulfilled';
-
-    // 利用setTimeout, 防止在then注册完之前, 同步函数的resolve已经执行了
-    setTimeout(function() {
-      cbs.forEach(function(cb) {
-        cb(value);
-      });
-    }, 0)
-  }
-  // 引入promise, 写成fn(resolve)结构.
-  // fn是异步的, fn自己的异步回调里面使用传入的resolve.
-  fn(resolve);
-}
-
-
-// 引入reject
-function Promise(fn) {
-  var value = null,
-      state = 'pending',
-      cbs = [];
-
-  this.then = function(onFulfilled, onRejected) {
-    return new Promise((resolve, reject) => {
-      handle({
-        onFulfilled: onFulfilled || null,
-        onRejected: onRejected || null,
-        resolve: resolve,
-        reject: reject
-      });
-    });
-  }
-
-  function handle(callback) {
-    if (state === 'pending') {
-      cbs.push(callback);
-      return;
-    }
-
-    const cb = state === 'fulfilled' ? callback.onFulfilled : callback.onRejected;
-    let ret;
-    if (cb === null) {
-      cb = state === 'fulfilled' ? callback.resolve : callback.reject;
-      cb(value);
-      return;
-    }
-
+  // 状态转移
+  function resolve(result) {
     try {
-      ret = cb(value);
-      callback.resolve(ret);
-    } catch (e) {
-      callback.reject(e);
-    } 
-  }
-
-  function reject(reason) {
-    state = 'rejected';
-    value = reason;
-    execute();
-  }
-
-  function resolve(newValue) {
-    if (newValue && (typeof newValue === 'object' || typeof newValue === 'function')) {
-      var then = newValue.then;
-      if (typeof then === 'function') {
-        then.call(newValue, resolve);
+      const then = getThen(result); // 如果result是promise, 获取其then
+      if (then) {
+        // 如果还有then, 在其Execution Context下执行then
+        doResolve(then.bind(result), resolve, reject);
         return;
       }
+      fulfill(result);
+    } catch (e) {
+      reject(e);
     }
-
-    value = newValue;
-    state = 'fulfilled';
-    execute();
   }
 
-  function execute() {
-    setTimeout(function() {
-      cbs.forEach(function(cb) {
-        cb(value);
+  function getThen(value) {
+    var t = typeof value;
+    if (value && (t === 'object' || t === 'function')) {
+      const then = value.then;
+      if (typeof then === 'function') {
+        return then;
+      }
+    }
+    return null;
+  }
+
+  // 设置外层done状态, 保证onFulfilled, onRejected在多次[将被调用]时, 检查done, 确保只能被调用1次
+  function doResolve(fn, onFulfilled, onRejected) {
+    let done = false;
+    try {
+      fn(function(value) {
+        if (done) {
+          return;
+        }
+        done = true;
+        onFulfilled(value);
+      }, function(reason) {
+        if (done) {
+          return;
+        }
+        done = true;
+        onRejected(reason);
       });
-    }, 0)
+    } catch(ex) {
+      if (done) {
+        return;
+      }
+      done = true;
+      onRejected(ex);
+    }
   }
 
-  fn(resolve, reject);
+  function handle(handler) {
+    if (state === PENDING) {
+      handlers.push(handler);
+    } else {
+      if (state === FULFILLED &&
+        typeof handler.onFulfilled === 'function') {
+        handler.onFulfilled(value);
+      }
+      if (state === FULFILLED &&
+        typeof handler.onRejected === 'function') {
+        handler.onRejected(value);
+      }
+    }
+  }
+
+  // Observing (via.done)
+  this.done = function(onFulfilled, onRejected) {
+    setTimeout(function() {
+      handle({
+        onFulfilled: onFulfilled,
+        onRejected: onRejected
+      });
+    }, 0);
+  }
+
+  // Observing (via .then)
+  this.then = function(onFulfilled, onRejected) {
+    const self = this;
+    return new Promise((resolve, reject) => 
+      self.done(result => {
+        if (typeof onFulfilled === 'function') {
+          try {
+            return resolve(onFulfilled(result));
+          } catch(ex) {
+            return reject(ex);
+          }
+        } else {
+          return resolve(result);
+        }
+      }, function(err) {
+        if (typeof onRejected === 'function') {
+          try {
+            return resolve(onRejected(err));
+          } catch(ex) {
+            return reject(ex);
+          }
+        }
+      })
+    );
+  }
+
+  doResolve(fn, resolve, reject);
 }
