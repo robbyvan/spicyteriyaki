@@ -127,8 +127,8 @@ function Promise(fn) {
       state = 'pending',
       cbs = [];
 
-  this.then = function(onFulfilled) {
-    return new Promise(resolve => {
+  this.then = function(onFulfilled, onRejected) {
+    return new Promise((resolve, reject) => {
       handle({
         onFulfilled: onFulfilled || null,
         onRejected: onRejected || null,
