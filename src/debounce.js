@@ -15,7 +15,7 @@
 
 import _ from 'lodash';
 
-function debounce(func, wait, immediate) {
+export default function debounce(func, wait, immediate) {
   let timeout, args, context, timestamp, result;
 
   const later = function() {
@@ -64,4 +64,4 @@ function component() {
   return btn;
 }
 
-document.body.appendChild(component());
+// document.body.appendChild(component());

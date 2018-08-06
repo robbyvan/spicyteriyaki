@@ -41,7 +41,7 @@ function defineReactive(obj, key, val) {
 
 
 
-// 
+// 依赖
 class Dep {
   constructor() {
     this.subs = [];
