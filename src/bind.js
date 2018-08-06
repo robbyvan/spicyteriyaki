@@ -1,15 +1,18 @@
 Function.prototype.myBind = function(context) {
+  // 要求绑定在函数上
   if (typeof this !== 'function') {
-    throw  new TypeError('Error');
+    throw new TypeError('Error');
   }
 
-  let _this = this;
-  const args = [...arguments].slice(1);
+  // 函数 & 参数
+  const self = this;
+  const args = Array.prototype.slice.call(arguments, 1);
 
   return function F() {
     if (this instanceof F) {
-      return new _this(...args, ...arguments);
+      // 可以new
+      return new self([...args, ...arguments]);
     }
-    return _this.apply(context, args.concat(...arguments));
+    return self.apply(context, [...args, ...arguments]);
   }
 }
