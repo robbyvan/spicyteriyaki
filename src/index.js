@@ -1,14 +1,13 @@
 // import './class';
-import './new';
+// import './new';
 // import './instanceOf';
 // import debounce from './debounce';
 // import './call.js';
 // import './data-binding';
 // import './generator.js';
-
 // import '../dist/style.css';
-
-import './inherit.js';
+// import './inherit.js';
+import './lazy-loading.js';
 
 
 // const $ = (el) => {
