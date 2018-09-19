@@ -7,7 +7,9 @@
 // import './generator.js';
 // import '../dist/style.css';
 // import './inherit.js';
-import './lazy-loading.js';
+// import './lazy-loading.js';
+
+import './scripts';
 
 
 // const $ = (el) => {

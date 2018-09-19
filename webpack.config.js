@@ -1,5 +1,5 @@
 const path = require('path');
-// const HtmlWebpackPlugin = require('html-webpack-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 const webpack = require('webpack');
 
 module.exports = {
@@ -28,9 +28,9 @@ module.exports = {
     ]
   },
   plugins: [
-    // new HtmlWebpackPlugin({
-    //   title: 'Output Management'
-    // }),
+    new HtmlWebpackPlugin({
+      title: 'Spicy'
+    }),
     new webpack.HotModuleReplacementPlugin()
   ]
 };

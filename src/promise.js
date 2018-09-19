@@ -1,130 +1,135 @@
-const PENDING = 0;
-const FULFILLED = 1;
-const REJECTED = 2;
+class MyPromise {
+  constructor(executor) {
+    this._state = 'pending';
 
-function Promise(fn) {
-  let state = PENDING;
-  let value = null;
-  let handlers = [];
+    this._value;
+    this._rejectionReason;
 
-  // 状态: fulfill
-  function fulfill(result) {
-    state = FULFILLED;
-    value = result;
-    handlers.forEach(handle); // 保存callback
-    handlers = null;
-  }
+    this._resolutionQueue = [];
+    this._rejectionQueue = [];
 
-  // 状态: reject;
-  function reject(error) {
-    state = REJECTED;
-    value = error;
-    handlers.forEach(handle);
-    handlers = null;
-  }
-
-  // 状态转移
-  function resolve(result) {
     try {
-      const then = getThen(result); // 如果result是promise, 获取其then
-      if (then) {
-        // 如果还有then, 在其Execution Context下执行then
-        doResolve(then.bind(result), resolve, reject);
-        return;
-      }
-      fulfill(result);
-    } catch (e) {
-      reject(e);
+      executor(this.resolve.bind(this), this.reject.bind(this));
+    } catch(e) {
+      this.reject(e);
     }
   }
 
-  function getThen(value) {
-    var t = typeof value;
-    if (value && (t === 'object' || t === 'function')) {
-      const then = value.then;
-      if (typeof then === 'function') {
-        return then;
+  // resolution
+  _runResolutionHandlers() {
+    while(this._resolutionQueue.length > 0) {
+      const resolution = this._resolutionQueue.shift();
+
+      let returnValue;
+      try {
+        returnValue = resolution.handler(this._value)
+      } catch(e) {
+        resolution.promise.reject(e);
+      }
+
+      if (returnValue && returnValue instanceof MyPromise) {
+        returnValue
+          .then(v => {
+            resolution.promise.resolve(v);
+          })
+          .catch(e => {
+            resolution.promise.reject(e);
+          })
+      } else {
+        resolution.promise.resolve(returnValue);
       }
     }
-    return null;
   }
 
-  // 设置外层done状态, 保证onFulfilled, onRejected在多次[将被调用]时, 检查done, 确保只能被调用1次
-  function doResolve(fn, onFulfilled, onRejected) {
-    let done = false;
-    try {
-      fn(function(value) {
-        if (done) {
-          return;
-        }
-        done = true;
-        onFulfilled(value);
-      }, function(reason) {
-        if (done) {
-          return;
-        }
-        done = true;
-        onRejected(reason);
+  resolve(value) {
+    if (this._state === 'pending') {
+      this._state = 'resolved';
+      this._value = value;
+
+      this._runResolutionHandlers();
+    }
+  }
+
+  then(resolutionHandler, rejectionHandler) {
+    const newPromise = new MyPromise(() => {});
+
+    this._resolutionQueue.push({
+      handler: resolutionHandler,
+      promise: newPromise
+    });
+
+    if (typeof rejectionHandler === 'function') {
+      this._rejectionQueue.push({
+        handler: rejectionHandler,
+        promise: newPromise
       });
-    } catch(ex) {
-      if (done) {
-        return;
+    }
+
+    if (this._state === 'resolved') {
+      this._runResolutionHandlers();
+    }
+
+    if (this._state === 'rejected') {
+      newPromise.reject(this._rejectionReason);
+    }
+
+    return newPromise;
+  }
+
+  // rejection
+  _runRejectionHandlers() {
+    while(this._rejectionQueue.length > 0) {
+      const rejection = this._rejectionQueue.shift();
+
+      let returnValue;
+      try {
+        returnValue = rejection.handler(this._rejectionReason)
+      } catch(e) {
+        rejection.promise.reject(e);
       }
-      done = true;
-      onRejected(ex);
+
+      if (returnValue && returnValue instanceof MyPromise) {
+        returnValue
+        .then(v => {
+          rejection.promise.resolve(v);
+        })
+        .catch(e => {
+          rejection.promise.reject(e);
+        });
+      } else {
+        rejection.promise.resolve(returnValue);
+      }
     }
   }
 
-  function handle(handler) {
-    if (state === PENDING) {
-      handlers.push(handler);
-    } else {
-      if (state === FULFILLED &&
-        typeof handler.onFulfilled === 'function') {
-        handler.onFulfilled(value);
-      }
-      if (state === FULFILLED &&
-        typeof handler.onRejected === 'function') {
-        handler.onRejected(value);
+  reject(reason) {
+    if (this._state === 'pending') {
+      this._state = 'rejected';
+      this._rejectionReason = reason;
+
+      this._runRejectionHandlers();
+
+      while (this._resolutionQueue.length > 0) {
+        const resolution = this._resolutionQueue.shift();
+        resolution.promise.reject(this._rejectionReason);
       }
     }
   }
 
-  // Observing (via.done)
-  this.done = function(onFulfilled, onRejected) {
-    setTimeout(function() {
-      handle({
-        onFulfilled: onFulfilled,
-        onRejected: onRejected
-      });
-    }, 0);
-  }
+  catch(rejectionHandler) {
+    const newPromise = new MyPromise(() => {});
 
-  // Observing (via .then)
-  this.then = function(onFulfilled, onRejected) {
-    const self = this;
-    return new Promise((resolve, reject) => 
-      self.done(result => {
-        if (typeof onFulfilled === 'function') {
-          try {
-            return resolve(onFulfilled(result));
-          } catch(ex) {
-            return reject(ex);
-          }
-        } else {
-          return resolve(result);
-        }
-      }, function(err) {
-        if (typeof onRejected === 'function') {
-          try {
-            return resolve(onRejected(err));
-          } catch(ex) {
-            return reject(ex);
-          }
-        }
-      })
-    );
-  }
+    this._rejectionQueue.push({
+      handler: rejectionHandler,
+      promise: newPromise
+    });
 
-  doResolve(fn, resolve, reject);
+    if (this._state === 'rejected') {
+      this._runRejectionHandlers();
+    }
+
+    return newPromise;
+  }
 }
+
+module.exports = MyPromise;

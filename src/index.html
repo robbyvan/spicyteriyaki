@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+</head>
+<body>
+<script>
+  //   const loadJS = (function () {
+  //   return function (url, callback) {
+  //     const script = document.createElement('script');
+  //     script.src = url;
+  //     document.body.appendChild(script);
+  //     script.onload = function() {
+  //       if (typeof callback !== 'function') {
+  //         return;
+  //       }
+  //       callback();
+  //     }
+  //   }
+  // })();
+
+  // const commandJS = (function() {
+  //   const group = [];
+  //   let len = 0;
+
+  //   function isArray(v) {
+  //     return (v instanceof Array);
+  //   }
+
+  //   function isString(v) {
+  //     return Object.prototype.toString.call(v) === '[object String]';
+  //   }
+
+  //   function correctType(v) {
+  //     return isArray(v) || isString(v);
+  //   }
+
+  //   function add() {
+  //     for (let i = 0, js; js = arguments[i]; ++i) {
+  //       if (!correctType(js)) {
+  //         throw new Error(`The type of the ${i} th js file is not correct`);
+  //       }
+  //       group.push(js);
+  //     }
+  //     return this;
+  //   }
+
+  //   function isFinish() {
+  //     len -= 1;
+  //     if (len === 0) {
+  //       exe();
+  //     }
+  //   }
+
+  //   function loadArray(urls) {
+  //     urls.map(u => {
+  //       loadJS(u, (function() {
+  //         isFinish();
+  //       }).bind(this))
+  //     });
+  //   }
+
+  //   function exe() {
+  //     if (group.length === 0) {
+  //       return;
+  //     }
+  //     let js = group.shift();
+  //     if (isArray(js)) {
+  //       len = js.length;
+  //       loadArray(js);
+  //     } else {
+  //       len = 1;
+  //       loadArray([js]);
+  //     }
+  //     return this;
+  //   }
+
+  //   return { exe, add };
+  // })();
+
+  // // console.log(commandJS)
+  // // commandJS.add('./1.js').add('./2.js').add('./3.js').exe();
+  // commandJS.add(['./1.js', './2.js', './3.js']).exe();
+</script>
+<script src="./3.js"></script>
+</body>
+</html>
