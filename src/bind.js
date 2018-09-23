@@ -11,7 +11,7 @@ Function.prototype.myBind = function(context) {
   return function F() {
     if (this instanceof F) {
       // 可以new
-      return new self([...args, ...arguments]);
+      return new self(...args, ...arguments);
     }
     return self.apply(context, [...args, ...arguments]);
   }
