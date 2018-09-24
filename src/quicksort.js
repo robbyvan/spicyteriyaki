@@ -1,19 +1,19 @@
-function quickSort(arr) {
-  if (arr.length < 2) {
-    return arr;
+function quickSort(nums) {
+  if (nums.length === 0) {
+    return [];
   }
-  const pivotIndex = Math.floor(arr.length / 2);
-  const pivot = arr[pivotIndex];
-  const left = [];
-  const right = [];
 
-  for (let i = 0; i < arr.length; ++i) {
-    if (arr[i] < pivot) {
-      left.push(arr[i]);
+  let left = [];
+  let right = [];
+  const base = nums[0];
+
+  for (let i = 1; i < nums.length; ++i) {
+    if (nums[i] < base) {
+      left.push(nums[i]);
     } else {
-      right.push(arr[i]);
+      right.push(nums[i]);
     }
   }
 
-  return quickSort(left).concat([pivot], quickSort(right));
+  return quickSort(left).concat(base, quickSort(right));
 }
